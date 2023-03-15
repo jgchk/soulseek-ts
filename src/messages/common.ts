@@ -18,3 +18,13 @@ export const TransferDirection = {
   Download: 0,
   Upload: 1,
 } as const
+
+export type FileAttribute = typeof FileAttribute[keyof typeof FileAttribute]
+export const FileAttribute = {
+  Bitrate: 0,
+  Duration: 1,
+  VBR: 2,
+  Encoder: 3,
+  SampleRate: 4,
+  BitDepth: 5,
+} as const

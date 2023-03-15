@@ -1,4 +1,4 @@
-import { ConnectionType, TransferDirection } from '../common'
+import { ConnectionType, FileAttribute, TransferDirection } from '../common'
 import { MessageBuilder } from '../message-builder'
 
 export type ToPeerMessage = Parameters<
@@ -22,7 +22,7 @@ export type SharedFileListResponse = {
       filename: string
       size: number | bigint
       extension: string
-      attrs: { [attr: number]: number }
+      attrs: Map<FileAttribute, number>
     }[]
   }[]
 }
@@ -34,7 +34,7 @@ export type FileSearchResponse = {
     filename: string
     size: number | bigint
     extension: string
-    attrs: { [attr: number]: number }
+    attrs: Map<FileAttribute, number>
   }[]
   slotsFree: number
   avgSpeed: number

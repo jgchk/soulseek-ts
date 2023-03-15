@@ -1,6 +1,6 @@
 import { MessageParser } from '../message-parser'
 import zlib from 'zlib'
-import { TransferDirection } from '../common'
+import { FileAttribute, TransferDirection } from '../common'
 
 export type FromPeerMessage = ReturnType<
   typeof fromPeerMessage[keyof typeof fromPeerMessage]
@@ -17,7 +17,7 @@ export type FileSearchResponse = {
   results: {
     filename: string
     size: bigint
-    attrs: { [attr: number]: number }
+    attrs: Map<FileAttribute, number>
   }[]
   slotsFree: number
   avgSpeed: number
@@ -74,9 +74,11 @@ export const fromPeerMessage = {
       const size = msg.int64()
       msg.str() // ext
       const numAttrs = msg.int32()
-      const attrs: FileSearchResponse['results'][number]['attrs'] = {}
+      const attrs: FileSearchResponse['results'][number]['attrs'] = new Map()
       for (let attrib = 0; attrib < numAttrs; attrib++) {
-        attrs[msg.int32()] = msg.int32()
+        const attrType = msg.int32() as FileAttribute
+        const attrValue = msg.int32()
+        attrs.set(attrType, attrValue)
       }
 
       results.push({
