@@ -1,6 +1,7 @@
-import { MessageParser } from '../message-parser'
 import zlib from 'zlib'
+
 import { FileAttribute, TransferDirection } from '../common'
+import { MessageParser } from '../message-parser'
 
 export type FromPeerMessage = ReturnType<
   typeof fromPeerMessage[keyof typeof fromPeerMessage]
@@ -55,7 +56,7 @@ export type TransferResponse =
 export type UploadFailed = { kind: 'uploadFailed'; filename: string }
 
 export const fromPeerMessage = {
-  sharedFileListRequest: (msg: MessageParser): SharedFileListRequest => {
+  sharedFileListRequest: (): SharedFileListRequest => {
     return { kind: 'sharedFileListRequest' }
   },
   fileSearchResponse: (msg_: MessageParser): FileSearchResponse => {
@@ -139,7 +140,7 @@ export const fromPeerMessageParser = (msg: MessageParser) => {
   const code = msg.int32()
   switch (code) {
     case 4:
-      return fromPeerMessage.sharedFileListRequest(msg)
+      return fromPeerMessage.sharedFileListRequest()
     case 9:
       return fromPeerMessage.fileSearchResponse(msg)
     case 40:

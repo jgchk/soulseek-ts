@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events'
 import net, { Socket } from 'net'
 import type TypedEventEmitter from 'typed-emitter'
-import { Address } from './common'
 
+import { Address } from './common'
 import {
   FromServerMessage,
   fromServerMessageParser,
@@ -46,6 +46,7 @@ export class SlskServer extends (EventEmitter as new () => TypedEventEmitter<Sls
     message: K,
     ...args: Parameters<typeof toServerMessage[K]>
   ) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const result = toServerMessage[message](...args)
     this.conn.write(result.getBuffer())

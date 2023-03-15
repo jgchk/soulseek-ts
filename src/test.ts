@@ -1,11 +1,12 @@
-import { SlskClient } from './client'
 import fs from 'fs'
+
+import { SlskClient } from './client'
 
 const main = async () => {
   const client = new SlskClient()
   await client.login('flibberty_gibbit__', 'jfewqiFEQEFj3219')
   const results = await client.search('milk', {
-    onResult: (result) => {
+    onResult: () => {
       // console.log('result', result.username, result.results.length)
     },
     timeout: 2000,

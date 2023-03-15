@@ -118,7 +118,7 @@ export const fromServerMessage = {
   possibleParents: (msg: MessageParser): PossibleParents => {
     const numberOfParents = msg.int32()
 
-    let parents: PossibleParents['parents'] = []
+    const parents: PossibleParents['parents'] = []
     for (let i = 0; i < numberOfParents; i++) {
       const username = msg.str()
       const ip = [msg.int8(), msg.int8(), msg.int8(), msg.int8()] as const

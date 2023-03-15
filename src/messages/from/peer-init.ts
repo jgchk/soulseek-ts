@@ -1,5 +1,5 @@
-import { MessageParser } from '../message-parser'
 import { ConnectionType } from '../common'
+import { MessageParser } from '../message-parser'
 
 export type FromPeerInitMessage = ReturnType<
   typeof fromPeerInitMessage[keyof typeof fromPeerInitMessage]

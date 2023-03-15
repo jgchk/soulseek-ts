@@ -1,33 +1,30 @@
-import { Socket } from 'net'
 import crypto from 'crypto'
+import EventEmitter from 'events'
 import net from 'net'
-import { parentPort } from 'worker_threads'
+import TypedEventEmitter from 'typed-emitter'
+
+import { Address } from './common'
+import { SlskListen, SlskListenEvents } from './listen'
 import {
   ConnectionType,
   TransferDirection,
   UserStatus,
 } from './messages/common'
 import {
+  FileSearchResponse,
+  FromPeerMessage,
+  TransferRequestUpload,
+} from './messages/from/peer'
+import { PierceFirewall } from './messages/from/peer-init'
+import {
   ConnectToPeer,
   FromServerMessage,
   GetPeerAddress,
   Login,
 } from './messages/from/server'
-import { SlskPeer, SlskPeerEvents } from './peer'
-import { SlskServer } from './server'
-import TypedEventEmitter from 'typed-emitter'
-import EventEmitter from 'events'
-import {
-  FileSearchResponse,
-  FromPeerMessage,
-  TransferRequest,
-  TransferRequestUpload,
-} from './messages/from/peer'
-import { SlskListen, SlskListenEvents } from './listen'
-import { hostname } from 'os'
-import { Address } from './common'
-import { PierceFirewall } from './messages/from/peer-init'
 import { toPeerMessage } from './messages/to/peer'
+import { SlskPeer } from './peer'
+import { SlskServer } from './server'
 
 const DEFAULT_LOGIN_TIMEOUT = 10 * 1000
 const DEFAULT_SEARCH_TIMEOUT = 10 * 1000
@@ -119,36 +116,40 @@ export class SlskClient {
       }
     })
 
-    this.listen.on('message', async (msg) => {
-      switch (msg.kind) {
-        case 'peerInit': {
-          const existingPeer = this.peers.get(msg.username)
-          if (existingPeer) {
-            // We're already connected, ignore
-            return
+    this.listen.on('message', (msg) => {
+      const handler = async () => {
+        switch (msg.kind) {
+          case 'peerInit': {
+            const existingPeer = this.peers.get(msg.username)
+            if (existingPeer) {
+              // We're already connected, ignore
+              return
+            }
+
+            const peerAddress = await this.getPeerAddress(msg.username)
+
+            const peer = new SlskPeer({
+              host: peerAddress.host,
+              port: peerAddress.port,
+            })
+
+            peer.once('close', () => {
+              peer.destroy()
+              this.peers.delete(msg.username)
+            })
+
+            peer.on('message', (msg) =>
+              this.peerMessages.emit('message', msg, peer)
+            )
+
+            this.peers.set(msg.username, peer)
+
+            break
           }
-
-          const peerAddress = await this.getPeerAddress(msg.username)
-
-          const peer = new SlskPeer({
-            host: peerAddress.host,
-            port: peerAddress.port,
-          })
-
-          peer.once('close', () => {
-            peer.destroy()
-            this.peers.delete(msg.username)
-          })
-
-          peer.on('message', (msg) =>
-            this.peerMessages.emit('message', msg, peer)
-          )
-
-          this.peers.set(msg.username, peer)
-
-          break
         }
       }
+
+      void handler()
     })
   }
 
@@ -262,7 +263,7 @@ export class SlskClient {
       ) => void
     } = {}
   ) {
-    let peer = await this.getPeerByUsername(username)
+    const peer = await this.getPeerByUsername(username)
 
     peer.send('queueUpload', { filename })
 

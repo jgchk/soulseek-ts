@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
-    "lint": "tsc",
+    "lint": "tsc && eslint .",
     "test": "tsx src/test.ts"
   },
   "keywords": [],
@@ -20,6 +20,11 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^18.15.2",
+    "@typescript-eslint/eslint-plugin": "^5.55.0",
+    "@typescript-eslint/parser": "^5.55.0",
+    "eslint": "^8.36.0",
+    "eslint-config-prettier": "^8.7.0",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
     "tsup": "^6.6.3",
     "tsx": "^3.12.5",
     "typed-emitter": "^2.1.0",

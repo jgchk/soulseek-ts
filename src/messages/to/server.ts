@@ -1,6 +1,7 @@
-import { MessageBuilder } from '../message-builder'
 import crypto from 'crypto'
+
 import { ConnectionType, UserStatus } from '../common'
+import { MessageBuilder } from '../message-builder'
 
 export type ToServerMessage = Parameters<
   typeof toServerMessage[keyof typeof toServerMessage]

@@ -1,9 +1,9 @@
 import { EventEmitter } from 'events'
 import net, { Socket } from 'net'
 import type TypedEventEmitter from 'typed-emitter'
+
 import { Address } from './common'
 import { FromPeerMessage, fromPeerMessageParser } from './messages/from/peer'
-
 import { MessageParser } from './messages/message-parser'
 import { MessageStream } from './messages/message-stream'
 import { toPeerMessage } from './messages/to/peer'
@@ -47,6 +47,7 @@ export class SlskPeer extends (EventEmitter as new () => TypedEventEmitter<SlskP
     message: K,
     ...args: Parameters<typeof toPeerMessage[K]>
   ) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const result = toPeerMessage[message](...args)
     this.conn.write(result.getBuffer())

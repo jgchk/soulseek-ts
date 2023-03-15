@@ -87,7 +87,7 @@ export const toPeerMessage = {
 
       for (let j = 0; j < dir.files.length; j++) {
         const file = dir.files[j]
-        const attrs = Object.entries(file.attrs)
+        const attrs = [...file.attrs.entries()]
 
         builder
           .int8(1)
@@ -98,7 +98,7 @@ export const toPeerMessage = {
 
         for (let k = 0; k < attrs.length; k++) {
           const [key, value] = attrs[k]
-          builder.int32(parseInt(key)).int32(value)
+          builder.int32(key).int32(value)
         }
       }
     }
@@ -114,7 +114,7 @@ export const toPeerMessage = {
 
     for (let i = 0; i < msg.results.length; i++) {
       const result = msg.results[i]
-      const attrs = Object.entries(result.attrs)
+      const attrs = [...result.attrs.entries()]
 
       builder
         .int8(1)
@@ -125,7 +125,7 @@ export const toPeerMessage = {
 
       for (let j = 0; j < attrs.length; j++) {
         const [key, value] = attrs[j]
-        builder.int32(parseInt(key)).int32(value)
+        builder.int32(key).int32(value)
       }
     }
 
