@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events'
 import net, { Server, Socket } from 'net'
 import type TypedEventEmitter from 'typed-emitter'
+import { Address } from './common'
 import {
   FromPeerInitMessage,
   fromPeerInitMessageParser,
@@ -10,7 +11,7 @@ import { MessageParser } from './messages/message-parser'
 import { MessageStream } from './messages/message-stream'
 
 export type SlskListenEvents = {
-  message: (msg: FromPeerInitMessage) => void
+  message: (msg: FromPeerInitMessage, address: Address) => void
   error: (error: Error) => void
 }
 
@@ -20,6 +21,12 @@ export class SlskListen extends (EventEmitter as new () => TypedEventEmitter<Sls
   constructor(port: number) {
     super()
     this.server = net.createServer((c) => {
+      const host = c.remoteAddress
+      const port = c.remotePort
+      if (!host || !port) {
+        return
+      }
+
       const msgs = new MessageStream()
 
       c.on('data', (chunk) => msgs.write(chunk))
@@ -28,7 +35,7 @@ export class SlskListen extends (EventEmitter as new () => TypedEventEmitter<Sls
       msgs.on('message', (msg: MessageParser) => {
         const data = fromPeerInitMessageParser(msg)
         if (data) {
-          this.emit('message', data)
+          this.emit('message', data, { host, port })
         }
       })
     })

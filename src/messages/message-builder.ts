@@ -19,6 +19,13 @@ export class MessageBuilder {
     return this
   }
 
+  int64(value: number | bigint) {
+    const b = Buffer.alloc(8)
+    b.writeBigUInt64LE(BigInt(value), 0)
+    this.data = Buffer.concat([this.data, b])
+    return this
+  }
+
   str(value: string) {
     // convert to buff
     let b = Buffer.from(value, 'utf8')

@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events'
 import net, { Socket } from 'net'
 import type TypedEventEmitter from 'typed-emitter'
+import { Address } from './common'
 
 import {
   FromServerMessage,
@@ -15,18 +16,13 @@ export type SlskServerEvents = {
   error: (error: Error) => void
 }
 
-export type ServerAddress = {
-  host: string
-  port: number
-}
-
 export class SlskServer extends (EventEmitter as new () => TypedEventEmitter<SlskServerEvents>) {
   conn: Socket
   msgs: MessageStream
 
-  constructor(serverAddress: ServerAddress) {
+  constructor(address: Address) {
     super()
-    this.conn = net.createConnection(serverAddress)
+    this.conn = net.createConnection(address)
 
     this.msgs = new MessageStream()
 

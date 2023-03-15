@@ -19,6 +19,12 @@ export class MessageParser {
     return value
   }
 
+  int64() {
+    const value = this.data.readBigUInt64LE(this.pointer)
+    this.pointer += 8
+    return value
+  }
+
   str() {
     const size = this.data.readUInt32LE(this.pointer)
     this.pointer += 4

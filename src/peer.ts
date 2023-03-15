@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events'
 import net, { Socket } from 'net'
 import type TypedEventEmitter from 'typed-emitter'
+import { Address } from './common'
 import { FromPeerMessage, fromPeerMessageParser } from './messages/from/peer'
 
 import { MessageParser } from './messages/message-parser'
@@ -15,18 +16,13 @@ export type SlskPeerEvents = {
   message: (msg: FromPeerMessage) => void
 }
 
-export type PeerAddress = {
-  host: string
-  port: number
-}
-
 export class SlskPeer extends (EventEmitter as new () => TypedEventEmitter<SlskPeerEvents>) {
   conn: Socket
   msgs: MessageStream
 
-  constructor(peerAddress: PeerAddress) {
+  constructor(address: Address) {
     super()
-    this.conn = net.createConnection(peerAddress)
+    this.conn = net.createConnection(address)
 
     this.msgs = new MessageStream()
 

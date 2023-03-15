@@ -16,7 +16,7 @@ export type FileSearchResponse = {
   token: string
   results: {
     filename: string
-    size: number
+    size: bigint
     attrs: { [attr: number]: number }
   }[]
   slotsFree: number
@@ -24,20 +24,20 @@ export type FileSearchResponse = {
   queueLength: number
 }
 
-export type TransferRequest =
-  | {
-      kind: 'transferRequest'
-      direction: 0
-      token: string
-      filename: string
-    }
-  | {
-      kind: 'transferRequest'
-      direction: 1
-      token: string
-      filename: string
-      size: number
-    }
+export type TransferRequest = TransferRequestDownload | TransferRequestUpload
+export type TransferRequestDownload = {
+  kind: 'transferRequest'
+  direction: 0
+  token: string
+  filename: string
+}
+export type TransferRequestUpload = {
+  kind: 'transferRequest'
+  direction: 1
+  token: string
+  filename: string
+  size: bigint
+}
 
 export type TransferResponse =
   | {
@@ -71,8 +71,7 @@ export const fromPeerMessage = {
     for (let i = 0; i < numResults; i++) {
       msg.int8() // code
       const filename = msg.str()
-      const size = msg.int32()
-      msg.int32() // filesize2
+      const size = msg.int64()
       msg.str() // ext
       const numAttrs = msg.int32()
       const attrs: FileSearchResponse['results'][number]['attrs'] = {}
@@ -108,7 +107,7 @@ export const fromPeerMessage = {
     if (direction === TransferDirection.Download) {
       return { kind: 'transferRequest', direction, token, filename }
     } else if (direction === TransferDirection.Upload) {
-      const size = msg.int32()
+      const size = msg.int64()
       return { kind: 'transferRequest', direction, token, filename, size }
     } else {
       throw new Error(`Unknown transfer direction: ${direction}`)
