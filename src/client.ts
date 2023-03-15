@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import EventEmitter from 'events'
 import net from 'net'
+import stream from 'stream'
 import TypedEventEmitter from 'typed-emitter'
 
 import { Address } from './common'
@@ -251,16 +252,17 @@ export class SlskClient {
     {
       timeout = DEFAULT_DOWNLOAD_TIMEOUT,
       onData,
+      onProgress,
+      onComplete,
     }: {
       timeout?: number
-      onData?: (
-        data: Buffer,
-        metadata: {
-          totalBytesReceived: bigint
-          totalExpectedBytes: bigint
-          progress: number
-        }
-      ) => void
+      onData?: (data: Buffer) => void
+      onProgress?: (metadata: {
+        totalBytesReceived: bigint
+        totalExpectedBytes: bigint
+        progress: number
+      }) => void
+      onComplete?: (totalBytesReceived: bigint) => void
     } = {}
   ) {
     const peer = await this.getPeerByUsername(username)
@@ -330,44 +332,43 @@ export class SlskClient {
 
     const fileOffset = 0 // TODO: support resuming downloads
 
-    const totalBytesReceived = await new Promise<bigint>((resolve, reject) => {
-      let token: string | undefined
-      let totalBytesReceived = 0n
-      conn.on('data', (data) => {
-        if (token === undefined) {
-          token = data.toString('hex', 0, 4)
+    const downloadStream = new stream.PassThrough()
 
-          // send file offset message
-          const fileOffsetBuffer = Buffer.alloc(8)
-          fileOffsetBuffer.writeBigUInt64LE(BigInt(fileOffset), 0)
-          conn.write(fileOffsetBuffer)
-        } else {
-          totalBytesReceived += BigInt(data.length)
+    let token: string | undefined
+    let totalBytesReceived = 0n
+    conn.on('data', (data) => {
+      if (token === undefined) {
+        token = data.toString('hex', 0, 4)
 
-          onData?.(data, {
-            totalBytesReceived: totalBytesReceived,
-            totalExpectedBytes: transferRequest.size,
-            progress:
-              Number((totalBytesReceived * 100n) / transferRequest.size) / 100,
-          })
+        // send file offset message
+        const fileOffsetBuffer = Buffer.alloc(8)
+        fileOffsetBuffer.writeBigUInt64LE(BigInt(fileOffset), 0)
+        conn.write(fileOffsetBuffer)
+      } else {
+        totalBytesReceived += BigInt(data.length)
 
-          const isComplete = totalBytesReceived >= transferRequest.size
-          if (isComplete) {
-            conn.end()
-          }
+        downloadStream.write(data)
+        onProgress?.({
+          totalBytesReceived: totalBytesReceived,
+          totalExpectedBytes: transferRequest.size,
+          progress:
+            Number((totalBytesReceived * 100n) / transferRequest.size) / 100,
+        })
+        onData?.(data)
+
+        const isComplete = totalBytesReceived >= transferRequest.size
+        if (isComplete) {
+          conn.end()
+          downloadStream.end()
+          onComplete?.(totalBytesReceived)
         }
-      })
-
-      conn.on('close', (hadError) => {
-        if (hadError) {
-          reject(new Error('Download failed'))
-        } else {
-          resolve(totalBytesReceived)
-        }
-      })
+      }
     })
 
-    return totalBytesReceived
+    conn.on('error', (error) => downloadStream.emit('error', error))
+    conn.on('close', () => downloadStream.end())
+
+    return downloadStream
   }
 
   async getPeerByUsername(

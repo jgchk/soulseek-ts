@@ -20,18 +20,19 @@ const main = async () => {
   if (bestResult) {
     const bestResultFile = bestResult.results[0]
     console.log('bestResultFile', bestResultFile)
-    const data = await client.download(
+
+    const stream = await client.download(
       bestResult.username,
       bestResultFile.filename,
       {
-        onData: (data) => {
-          fs.appendFileSync('downloaded', data)
-        },
+        onProgress: ({ progress }) => console.log('progress', progress),
       }
     )
-    console.log({
-      bytesReceived: data,
-      expectedSize: bestResultFile.size,
+
+    await new Promise((resolve) => {
+      const downloaded = fs.createWriteStream('downloaded')
+      stream.pipe(downloaded)
+      stream.on('end', resolve)
     })
   } else {
     console.error('No results')
