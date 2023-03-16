@@ -20,7 +20,7 @@ export type FileSearchResponse = {
     size: bigint
     attrs: Map<FileAttribute, number>
   }[]
-  slotsFree: number
+  slotsFree: boolean
   avgSpeed: number
   queueLength: number
 }
@@ -97,7 +97,7 @@ export const fromPeerMessage = {
       username,
       token,
       results,
-      slotsFree,
+      slotsFree: slotsFree > 0,
       avgSpeed,
       queueLength,
     }

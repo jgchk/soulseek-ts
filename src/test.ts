@@ -13,7 +13,7 @@ const main = async () => {
   })
 
   const bestResult = results
-    .filter((result) => result.slotsFree > 0 && result.results.length > 0)
+    .filter((result) => result.slotsFree && result.results.length > 0)
     .sort((a, b) => b.avgSpeed - a.avgSpeed)
     .at(0)
 
