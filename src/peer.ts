@@ -36,9 +36,13 @@ export class SlskPeer extends (EventEmitter as new () => TypedEventEmitter<SlskP
     })
 
     this.msgs.on('message', (msg: MessageParser) => {
-      const data = fromPeerMessageParser(msg)
-      if (data) {
-        this.emit('message', data)
+      try {
+        const data = fromPeerMessageParser(msg)
+        if (data) {
+          this.emit('message', data)
+        }
+      } catch (error) {
+        console.error('Failed to parse peer message', error)
       }
     })
   }

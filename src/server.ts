@@ -35,9 +35,13 @@ export class SlskServer extends (EventEmitter as new () => TypedEventEmitter<Sls
     })
 
     this.msgs.on('message', (msg: MessageParser) => {
-      const data = fromServerMessageParser(msg)
-      if (data) {
-        this.emit('message', data)
+      try {
+        const data = fromServerMessageParser(msg)
+        if (data) {
+          this.emit('message', data)
+        }
+      } catch (error) {
+        console.error('Failed to parse server message', error)
       }
     })
   }

@@ -33,9 +33,13 @@ export class SlskListen extends (EventEmitter as new () => TypedEventEmitter<Sls
       c.on('error', (error) => this.emit('error', error))
 
       msgs.on('message', (msg: MessageParser) => {
-        const data = fromPeerInitMessageParser(msg)
-        if (data) {
-          this.emit('message', data, { host, port })
+        try {
+          const data = fromPeerInitMessageParser(msg)
+          if (data) {
+            this.emit('message', data, { host, port })
+          }
+        } catch (error) {
+          console.error('Failed to parse peer init message', error)
         }
       })
     })
