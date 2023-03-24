@@ -16,6 +16,7 @@
     "format": "prettier --write .",
     "test": "pnpm run test:basic",
     "test:basic": "tsx examples/basic.ts",
+    "test:minimal": "tsx examples/minimal.ts",
     "test:resume": "tsx examples/resume.ts"
   },
   "keywords": [],
