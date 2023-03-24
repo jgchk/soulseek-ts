@@ -23,7 +23,10 @@
     "test:minimal": "tsx examples/minimal.ts",
     "test:resume": "tsx examples/resume.ts"
   },
-  "keywords": [],
+  "keywords": [
+    "soulseek",
+    "slsk"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
