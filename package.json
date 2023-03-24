@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
-    "lint": "tsc && eslint .",
+    "lint": "prettier --check . && tsc --noEmit && eslint .",
+    "format": "prettier --write .",
     "test": "pnpm run test:basic",
     "test:basic": "tsx examples/basic.ts",
     "test:resume": "tsx examples/resume.ts"
@@ -27,6 +28,7 @@
     "eslint": "^8.36.0",
     "eslint-config-prettier": "^8.7.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
+    "prettier": "^2.8.6",
     "tsup": "^6.6.3",
     "tsx": "^3.12.5",
     "typed-emitter": "^2.1.0",

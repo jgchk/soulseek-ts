@@ -19,9 +19,7 @@ const main = async () => {
   const bestPeer = results
     .map((result) => ({
       ...result,
-      results: result.results.filter(
-        (file) => file.size > 10000 && file.filename.endsWith('.mp3')
-      ),
+      results: result.results.filter((file) => file.size > 10000 && file.filename.endsWith('.mp3')),
     }))
     .filter((result) => result.slotsFree && result.results.length > 0)
     .sort((a, b) => {
@@ -40,9 +38,7 @@ const main = async () => {
   }
 
   // grab their smallest file (which will be at least 10kb due to our filter above)
-  const smallestFile = bestPeer.results
-    .sort((a, b) => Number(a.size - b.size))
-    .at(0)
+  const smallestFile = bestPeer.results.sort((a, b) => Number(a.size - b.size)).at(0)
 
   if (!smallestFile) {
     throw new Error('No files')
@@ -51,10 +47,7 @@ const main = async () => {
   console.log('Downloading', smallestFile.filename, 'from', bestPeer.username)
 
   // send a download request
-  const download = await client.download(
-    bestPeer.username,
-    smallestFile.filename
-  )
+  const download = await client.download(bestPeer.username, smallestFile.filename)
 
   // optional: subscribe to updates on our download so we can log them to the console
   download.events
@@ -67,9 +60,9 @@ const main = async () => {
 
   // create a unique filename for our download and make sure the downloads directory exists
   const parsedFilename = path.parse(smallestFile.filename.replaceAll('\\', '/'))
-  const fileName = `slsk-${bestPeer.username}-${
-    parsedFilename.name
-  }-${Date.now()}${parsedFilename.ext}`
+  const fileName = `slsk-${bestPeer.username}-${parsedFilename.name}-${Date.now()}${
+    parsedFilename.ext
+  }`
   const filePath = path.join(DOWNLOADS_DIR, fileName)
   await fs.promises.mkdir(DOWNLOADS_DIR, { recursive: true })
 

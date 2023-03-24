@@ -17,18 +17,10 @@ import {
   SlskDownloadEventEmitter,
 } from './downloads'
 import { SlskListen, SlskListenEvents } from './listen'
-import {
-  ConnectionType,
-  TransferDirection,
-  UserStatus,
-} from './messages/common'
+import { ConnectionType, TransferDirection, UserStatus } from './messages/common'
 import { FileSearchResponse, FromPeerMessage } from './messages/from/peer'
 import { PierceFirewall } from './messages/from/peer-init'
-import {
-  FromServerMessage,
-  GetPeerAddress,
-  Login,
-} from './messages/from/server'
+import { FromServerMessage, GetPeerAddress, Login } from './messages/from/server'
 import { toPeerMessage } from './messages/to/peer'
 import { SlskPeer } from './peer'
 import { SlskServer } from './server'
@@ -111,9 +103,7 @@ export class SlskClient {
                 this.peers.delete(msg.username)
               })
 
-              peer.on('message', (msg) =>
-                this.peerMessages.emit('message', msg, peer)
-              )
+              peer.on('message', (msg) => this.peerMessages.emit('message', msg, peer))
 
               this.peers.set(msg.username, peer)
 
@@ -127,24 +117,15 @@ export class SlskClient {
 
               this.fileTransferConnections.push(conn)
 
-              conn.write(
-                toPeerMessage.pierceFirewall({ token: msg.token }).getBuffer()
-              )
+              conn.write(toPeerMessage.pierceFirewall({ token: msg.token }).getBuffer())
 
               let download: DownloadWithToken | undefined
               conn.on('data', (data) => {
                 if (download === undefined) {
                   const token = data.toString('hex', 0, 4)
                   const download_ = this.downloads.find(
-                    (
-                      d
-                    ): d is
-                      | ConnectedDownload
-                      | DownloadingDownload
-                      | CompleteDownload =>
-                      d.username === msg.username &&
-                      downloadHasToken(d) &&
-                      d.token === token
+                    (d): d is ConnectedDownload | DownloadingDownload | CompleteDownload =>
+                      d.username === msg.username && downloadHasToken(d) && d.token === token
                   )
                   if (!download_) {
                     console.error('No download found for', msg)
@@ -153,11 +134,7 @@ export class SlskClient {
                   }
                   download = download_
                   download.status = 'downloading'
-                  download.events.emit(
-                    'status',
-                    'downloading',
-                    makeDownloadStatusData(download)
-                  )
+                  download.events.emit('status', 'downloading', makeDownloadStatusData(download))
 
                   // send file offset message
                   const fileOffsetBuffer = Buffer.alloc(8)
@@ -171,29 +148,19 @@ export class SlskClient {
                   download.events.emit('progress', {
                     receivedBytes: download.receivedBytes,
                     totalBytes: download.totalBytes,
-                    progress:
-                      Number(
-                        (download.receivedBytes * 100n) / download.totalBytes
-                      ) / 100,
+                    progress: Number((download.receivedBytes * 100n) / download.totalBytes) / 100,
                   })
 
-                  const isComplete =
-                    download.receivedBytes >= download.totalBytes
+                  const isComplete = download.receivedBytes >= download.totalBytes
                   if (isComplete) {
                     conn.end()
                     download.stream.end()
                     download.status = 'complete'
                     download.events.emit('complete', download.receivedBytes)
-                    download.events.emit(
-                      'status',
-                      'complete',
-                      makeDownloadStatusData(download)
-                    )
+                    download.events.emit('status', 'complete', makeDownloadStatusData(download))
 
                     // remove from this.downloads
-                    this.downloads = this.downloads.filter(
-                      (d) => d !== download
-                    )
+                    this.downloads = this.downloads.filter((d) => d !== download)
                   }
                 }
               })
@@ -201,8 +168,9 @@ export class SlskClient {
               conn.on('error', (error) => download?.stream.emit('error', error))
               conn.on('close', () => {
                 download?.stream.end()
-                this.fileTransferConnections =
-                  this.fileTransferConnections.filter((c) => c !== conn)
+                this.fileTransferConnections = this.fileTransferConnections.filter(
+                  (c) => c !== conn
+                )
               })
 
               break
@@ -241,9 +209,7 @@ export class SlskClient {
               this.peers.delete(msg.username)
             })
 
-            peer.on('message', (msg) =>
-              this.peerMessages.emit('message', msg, peer)
-            )
+            peer.on('message', (msg) => this.peerMessages.emit('message', msg, peer))
 
             this.peers.set(msg.username, peer)
 
@@ -324,10 +290,7 @@ export class SlskClient {
     })
   }
 
-  async getPeerAddress(
-    username: string,
-    timeout = DEFAULT_GET_PEER_ADDRESS_TIMEOUT
-  ) {
+  async getPeerAddress(username: string, timeout = DEFAULT_GET_PEER_ADDRESS_TIMEOUT) {
     this.server.send('getPeerAddress', { username })
 
     const result = await new Promise<GetPeerAddress>((resolve, reject) => {
@@ -350,11 +313,7 @@ export class SlskClient {
     return result
   }
 
-  async login(
-    username: string,
-    password: string,
-    timeout = DEFAULT_LOGIN_TIMEOUT
-  ) {
+  async login(username: string, password: string, timeout = DEFAULT_LOGIN_TIMEOUT) {
     this.server.send('login', { username, password })
 
     const loginResult = await new Promise<Login>((resolve, reject) => {
@@ -416,11 +375,7 @@ export class SlskClient {
     })
   }
 
-  async download(
-    username: string,
-    filename: string,
-    receivedBytes?: bigint | number
-  ) {
+  async download(username: string, filename: string, receivedBytes?: bigint | number) {
     const peer = await this.getPeerByUsername(username)
 
     peer.send('queueUpload', { filename })
@@ -432,26 +387,18 @@ export class SlskClient {
       receivedBytes: BigInt(receivedBytes ?? 0),
       stream: new stream.PassThrough(),
       events: new EventEmitter() as SlskDownloadEventEmitter,
-      requestQueuePosition: () =>
-        peer.send('placeInQueueRequest', { filename }),
+      requestQueuePosition: () => peer.send('placeInQueueRequest', { filename }),
     }
 
     this.downloads.push(download)
-    download.events.emit(
-      'status',
-      'requested',
-      makeDownloadStatusData(download)
-    )
+    download.events.emit('status', 'requested', makeDownloadStatusData(download))
 
     peer.send('placeInQueueRequest', { filename })
 
     return download
   }
 
-  async getPeerByUsername(
-    username: string,
-    timeout = DEFAULT_GET_PEER_BY_USERNAME_TIMEOUT
-  ) {
+  async getPeerByUsername(username: string, timeout = DEFAULT_GET_PEER_BY_USERNAME_TIMEOUT) {
     const existingPeer = this.peers.get(username)
     if (existingPeer) {
       return existingPeer

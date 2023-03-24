@@ -51,7 +51,7 @@ export class SlskPeer extends (EventEmitter as new () => TypedEventEmitter<SlskP
 
   send<K extends keyof typeof toPeerMessage>(
     message: K,
-    ...args: Parameters<typeof toPeerMessage[K]>
+    ...args: Parameters<(typeof toPeerMessage)[K]>
   ) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore

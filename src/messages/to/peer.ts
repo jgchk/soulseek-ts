@@ -1,9 +1,7 @@
 import { ConnectionType, FileAttribute, TransferDirection } from '../common'
 import { MessageBuilder } from '../message-builder'
 
-export type ToPeerMessage = Parameters<
-  typeof toPeerMessage[keyof typeof toPeerMessage]
->[0]
+export type ToPeerMessage = Parameters<(typeof toPeerMessage)[keyof typeof toPeerMessage]>[0]
 
 export type PierceFirewall = {
   token: string
@@ -74,14 +72,9 @@ export type PlaceInQueueRequest = {
 }
 
 export const toPeerMessage = {
-  pierceFirewall: (msg: PierceFirewall) =>
-    new MessageBuilder().int8(0).rawHexStr(msg.token),
+  pierceFirewall: (msg: PierceFirewall) => new MessageBuilder().int8(0).rawHexStr(msg.token),
   peerInit: (msg: PeerInit) =>
-    new MessageBuilder()
-      .int8(1)
-      .str(msg.username)
-      .str(msg.type)
-      .rawHexStr(msg.token),
+    new MessageBuilder().int8(1).str(msg.username).str(msg.type).rawHexStr(msg.token),
   sharedFileListResponse: (msg: SharedFileListResponse) => {
     const builder = new MessageBuilder().int32(5).int32(msg.dirs.length)
     for (let i = 0; i < msg.dirs.length; i++) {
@@ -93,12 +86,7 @@ export const toPeerMessage = {
         const file = dir.files[j]
         const attrs = [...file.attrs.entries()]
 
-        builder
-          .int8(1)
-          .str(file.filename)
-          .int64(file.size)
-          .str(file.extension)
-          .int32(attrs.length)
+        builder.int8(1).str(file.filename).int64(file.size).str(file.extension).int32(attrs.length)
 
         for (let k = 0; k < attrs.length; k++) {
           const [key, value] = attrs[k]
@@ -162,8 +150,7 @@ export const toPeerMessage = {
 
     return builder
   },
-  queueUpload: (msg: QueueUpload) =>
-    new MessageBuilder().int32(43).str(msg.filename),
+  queueUpload: (msg: QueueUpload) => new MessageBuilder().int32(43).str(msg.filename),
   placeInQueueRequest: (msg: PlaceInQueueRequest) =>
     new MessageBuilder().int32(51).str(msg.filename),
 }

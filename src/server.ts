@@ -3,10 +3,7 @@ import net, { Socket } from 'net'
 import type TypedEventEmitter from 'typed-emitter'
 
 import { Address } from './common'
-import {
-  FromServerMessage,
-  fromServerMessageParser,
-} from './messages/from/server'
+import { FromServerMessage, fromServerMessageParser } from './messages/from/server'
 import { MessageParser } from './messages/message-parser'
 import { MessageStream } from './messages/message-stream'
 import { toServerMessage } from './messages/to/server'
@@ -48,7 +45,7 @@ export class SlskServer extends (EventEmitter as new () => TypedEventEmitter<Sls
 
   send<K extends keyof typeof toServerMessage>(
     message: K,
-    ...args: Parameters<typeof toServerMessage[K]>
+    ...args: Parameters<(typeof toServerMessage)[K]>
   ) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore

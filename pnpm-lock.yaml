@@ -7,6 +7,7 @@ specifiers:
   eslint: ^8.36.0
   eslint-config-prettier: ^8.7.0
   eslint-plugin-simple-import-sort: ^10.0.0
+  prettier: ^2.8.6
   tsup: ^6.6.3
   tsx: ^3.12.5
   typed-emitter: ^2.1.0
@@ -23,6 +24,7 @@ devDependencies:
   eslint: 8.36.0
   eslint-config-prettier: 8.7.0_eslint@8.36.0
   eslint-plugin-simple-import-sort: 10.0.0_eslint@8.36.0
+  prettier: 2.8.6
   tsup: 6.6.3_typescript@4.9.5
   tsx: 3.12.5
   typed-emitter: 2.1.0
@@ -1266,6 +1268,12 @@ packages:
   /prelude-ls/1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
+    dev: true
+
+  /prettier/2.8.6:
+    resolution: {integrity: sha512-mtuzdiBbHwPEgl7NxWlqOkithPyp4VN93V7VeHVWBF+ad3I5avc0RVDT4oImXQy9H/AqxA2NSQH8pSxHW6FYbQ==}
+    engines: {node: '>=10.13.0'}
+    hasBin: true
     dev: true
 
   /punycode/2.3.0:

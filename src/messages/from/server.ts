@@ -2,7 +2,7 @@ import { ConnectionType } from '../common'
 import { MessageParser } from '../message-parser'
 
 export type FromServerMessage = ReturnType<
-  typeof fromServerMessage[keyof typeof fromServerMessage]
+  (typeof fromServerMessage)[keyof typeof fromServerMessage]
 >
 
 export type Login =
@@ -131,9 +131,7 @@ export const fromServerMessage = {
   },
 }
 
-export const fromServerMessageParser = (
-  msg: MessageParser
-): FromServerMessage | undefined => {
+export const fromServerMessageParser = (msg: MessageParser): FromServerMessage | undefined => {
   const size = msg.int32()
   if (size < 4) return
 

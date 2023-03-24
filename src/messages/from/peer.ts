@@ -3,9 +3,7 @@ import zlib from 'zlib'
 import { FileAttribute, TransferDirection } from '../common'
 import { MessageParser } from '../message-parser'
 
-export type FromPeerMessage = ReturnType<
-  typeof fromPeerMessage[keyof typeof fromPeerMessage]
->
+export type FromPeerMessage = ReturnType<(typeof fromPeerMessage)[keyof typeof fromPeerMessage]>
 
 export type SharedFileListRequest = {
   kind: 'sharedFileListRequest'
