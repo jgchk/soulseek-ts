@@ -13,7 +13,9 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "lint": "tsc && eslint .",
-    "test": "tsx src/test.ts"
+    "test": "pnpm run test:basic",
+    "test:basic": "tsx examples/basic.ts",
+    "test:resume": "tsx examples/resume.ts"
   },
   "keywords": [],
   "author": "",

@@ -5,20 +5,26 @@ import stream from 'stream'
 import TypedEventEmitter from 'typed-emitter'
 
 import { Address } from './common'
+import {
+  CompleteDownload,
+  ConnectedDownload,
+  Download,
+  downloadHasToken,
+  DownloadingDownload,
+  DownloadWithToken,
+  makeDownloadStatusData,
+  RequestedDownload,
+  SlskDownloadEventEmitter,
+} from './downloads'
 import { SlskListen, SlskListenEvents } from './listen'
 import {
   ConnectionType,
   TransferDirection,
   UserStatus,
 } from './messages/common'
-import {
-  FileSearchResponse,
-  FromPeerMessage,
-  TransferRequestUpload,
-} from './messages/from/peer'
+import { FileSearchResponse, FromPeerMessage } from './messages/from/peer'
 import { PierceFirewall } from './messages/from/peer-init'
 import {
-  ConnectToPeer,
   FromServerMessage,
   GetPeerAddress,
   Login,
@@ -31,7 +37,6 @@ const DEFAULT_LOGIN_TIMEOUT = 10 * 1000
 const DEFAULT_SEARCH_TIMEOUT = 10 * 1000
 const DEFAULT_GET_PEER_ADDRESS_TIMEOUT = 10 * 1000
 const DEFAULT_GET_PEER_BY_USERNAME_TIMEOUT = 10 * 1000
-const DEFAULT_DOWNLOAD_TIMEOUT = 60 * 1000
 
 export type SlskPeersEvents = {
   message: (msg: FromPeerMessage, peer: SlskPeer) => void
@@ -41,7 +46,9 @@ export class SlskClient {
   listen: SlskListen
   peers: Map<string, SlskPeer>
   peerMessages: TypedEventEmitter<SlskPeersEvents>
+  fileTransferConnections: net.Socket[]
   username: string | undefined
+  downloads: Download[]
 
   constructor({
     serverAddress = {
@@ -54,6 +61,8 @@ export class SlskClient {
     this.listen = new SlskListen(listenPort)
     this.peers = new Map()
     this.peerMessages = new EventEmitter() as TypedEventEmitter<SlskPeersEvents>
+    this.downloads = []
+    this.fileTransferConnections = []
 
     this.server.on('message', (msg) => {
       switch (msg.kind) {
@@ -78,7 +87,13 @@ export class SlskClient {
                 return
               }
 
-              const peer = new SlskPeer({ host: msg.host, port: msg.port })
+              const peer = new SlskPeer(
+                {
+                  host: msg.host,
+                  port: msg.port,
+                },
+                msg.username
+              )
 
               peer.once('connect', () => {
                 peer.send('pierceFirewall', { token: msg.token })
@@ -105,7 +120,91 @@ export class SlskClient {
               break
             }
             case ConnectionType.FileTransfer: {
-              // TODO: Download file
+              const conn = net.createConnection({
+                host: msg.host,
+                port: msg.port,
+              })
+
+              this.fileTransferConnections.push(conn)
+
+              conn.write(
+                toPeerMessage.pierceFirewall({ token: msg.token }).getBuffer()
+              )
+
+              let download: DownloadWithToken | undefined
+              conn.on('data', (data) => {
+                if (download === undefined) {
+                  const token = data.toString('hex', 0, 4)
+                  const download_ = this.downloads.find(
+                    (
+                      d
+                    ): d is
+                      | ConnectedDownload
+                      | DownloadingDownload
+                      | CompleteDownload =>
+                      d.username === msg.username &&
+                      downloadHasToken(d) &&
+                      d.token === token
+                  )
+                  if (!download_) {
+                    console.error('No download found for', msg)
+                    conn.end()
+                    return
+                  }
+                  download = download_
+                  download.status = 'downloading'
+                  download.events.emit(
+                    'status',
+                    'downloading',
+                    makeDownloadStatusData(download)
+                  )
+
+                  // send file offset message
+                  const fileOffsetBuffer = Buffer.alloc(8)
+                  fileOffsetBuffer.writeBigUInt64LE(download.receivedBytes, 0)
+                  conn.write(fileOffsetBuffer)
+                } else {
+                  download.receivedBytes += BigInt(data.length)
+
+                  download.stream.write(data)
+                  download.events.emit('data', data)
+                  download.events.emit('progress', {
+                    receivedBytes: download.receivedBytes,
+                    totalBytes: download.totalBytes,
+                    progress:
+                      Number(
+                        (download.receivedBytes * 100n) / download.totalBytes
+                      ) / 100,
+                  })
+
+                  const isComplete =
+                    download.receivedBytes >= download.totalBytes
+                  if (isComplete) {
+                    conn.end()
+                    download.stream.end()
+                    download.status = 'complete'
+                    download.events.emit('complete', download.receivedBytes)
+                    download.events.emit(
+                      'status',
+                      'complete',
+                      makeDownloadStatusData(download)
+                    )
+
+                    // remove from this.downloads
+                    this.downloads = this.downloads.filter(
+                      (d) => d !== download
+                    )
+                  }
+                }
+              })
+
+              conn.on('error', (error) => download?.stream.emit('error', error))
+              conn.on('close', () => {
+                download?.stream.end()
+                this.fileTransferConnections =
+                  this.fileTransferConnections.filter((c) => c !== conn)
+              })
+
               break
             }
             case ConnectionType.Distributed: {
@@ -129,10 +228,13 @@ export class SlskClient {
 
             const peerAddress = await this.getPeerAddress(msg.username)
 
-            const peer = new SlskPeer({
-              host: peerAddress.host,
-              port: peerAddress.port,
-            })
+            const peer = new SlskPeer(
+              {
+                host: peerAddress.host,
+                port: peerAddress.port,
+              },
+              msg.username
+            )
 
             peer.once('close', () => {
               peer.destroy()
@@ -151,6 +253,74 @@ export class SlskClient {
       }
 
       void handler()
+    })
+
+    this.peerMessages.on('message', (msg, peer) => {
+      switch (msg.kind) {
+        case 'transferRequest': {
+          if (msg.direction === TransferDirection.Upload) {
+            const existingDownloadIndex = this.downloads.findIndex(
+              (d) => d.username === peer.username && d.filename === msg.filename
+            )
+
+            if (existingDownloadIndex === -1) {
+              console.error('No download found for', msg)
+              return
+            }
+
+            this.downloads[existingDownloadIndex] = {
+              ...this.downloads[existingDownloadIndex],
+              status: 'connected',
+              queuePosition: 0,
+              token: msg.token,
+              totalBytes: msg.size,
+            }
+            this.downloads[existingDownloadIndex].events.emit(
+              'status',
+              'connected',
+              makeDownloadStatusData(this.downloads[existingDownloadIndex])
+            )
+
+            peer.send('transferResponse', {
+              token: msg.token,
+              allowed: true,
+            })
+          }
+
+          break
+        }
+        case 'placeInQueueResponse': {
+          const existingDownloadIndex = this.downloads.findIndex(
+            (d) => d.username === peer.username && d.filename === msg.filename
+          )
+
+          if (existingDownloadIndex === -1) {
+            console.error('No download found for', msg)
+            return
+          }
+
+          const download = this.downloads[existingDownloadIndex]
+          if (download.status === 'requested') {
+            this.downloads[existingDownloadIndex] = {
+              ...download,
+              status: 'queued',
+              queuePosition: msg.place,
+            }
+            this.downloads[existingDownloadIndex].events.emit(
+              'status',
+              'queued',
+              makeDownloadStatusData(this.downloads[existingDownloadIndex])
+            )
+          } else if (download.status === 'queued') {
+            this.downloads[existingDownloadIndex] = {
+              ...download,
+              queuePosition: msg.place,
+            }
+          }
+
+          break
+        }
+      }
     })
   }
 
@@ -249,126 +419,33 @@ export class SlskClient {
   async download(
     username: string,
     filename: string,
-    {
-      timeout = DEFAULT_DOWNLOAD_TIMEOUT,
-      onData,
-      onProgress,
-      onComplete,
-    }: {
-      timeout?: number
-      onData?: (data: Buffer) => void
-      onProgress?: (metadata: {
-        totalBytesReceived: bigint
-        totalExpectedBytes: bigint
-        progress: number
-      }) => void
-      onComplete?: (totalBytesReceived: bigint) => void
-    } = {}
+    receivedBytes?: bigint | number
   ) {
     const peer = await this.getPeerByUsername(username)
 
     peer.send('queueUpload', { filename })
 
-    const transferRequest = await new Promise<TransferRequestUpload>(
-      (resolve, reject) => {
-        const timeout_ = setTimeout(() => {
-          peer.off('message', listener)
-          reject(new Error('Download timed out while requesting file'))
-        }, timeout)
+    const download: RequestedDownload = {
+      status: 'requested',
+      username,
+      filename,
+      receivedBytes: BigInt(receivedBytes ?? 0),
+      stream: new stream.PassThrough(),
+      events: new EventEmitter() as SlskDownloadEventEmitter,
+      requestQueuePosition: () =>
+        peer.send('placeInQueueRequest', { filename }),
+    }
 
-        const listener = (msg: FromPeerMessage) => {
-          if (
-            msg.kind === 'transferRequest' &&
-            msg.filename === filename &&
-            msg.direction === TransferDirection.Upload
-          ) {
-            clearTimeout(timeout_)
-            peer.off('message', listener)
-            resolve(msg)
-          }
-        }
-
-        peer.on('message', listener)
-      }
+    this.downloads.push(download)
+    download.events.emit(
+      'status',
+      'requested',
+      makeDownloadStatusData(download)
     )
 
-    peer.send('transferResponse', {
-      token: transferRequest.token,
-      allowed: true,
-    })
+    peer.send('placeInQueueRequest', { filename })
 
-    const transferConnection = await new Promise<ConnectToPeer>(
-      (resolve, reject) => {
-        const timeout_ = setTimeout(() => {
-          this.server.off('message', listener)
-          reject(new Error('Download timed out while connecting to peer'))
-        }, timeout)
-
-        const listener = (msg: FromServerMessage) => {
-          if (
-            msg.kind === 'connectToPeer' &&
-            msg.type === ConnectionType.FileTransfer
-          ) {
-            clearTimeout(timeout_)
-            this.server.off('message', listener)
-            resolve(msg)
-          }
-        }
-
-        this.server.on('message', listener)
-      }
-    )
-
-    const conn = net.createConnection({
-      host: transferConnection.host,
-      port: transferConnection.port,
-    })
-
-    conn.write(
-      toPeerMessage
-        .pierceFirewall({ token: transferConnection.token })
-        .getBuffer()
-    )
-
-    const fileOffset = 0 // TODO: support resuming downloads
-
-    const downloadStream = new stream.PassThrough()
-
-    let token: string | undefined
-    let totalBytesReceived = 0n
-    conn.on('data', (data) => {
-      if (token === undefined) {
-        token = data.toString('hex', 0, 4)
-
-        // send file offset message
-        const fileOffsetBuffer = Buffer.alloc(8)
-        fileOffsetBuffer.writeBigUInt64LE(BigInt(fileOffset), 0)
-        conn.write(fileOffsetBuffer)
-      } else {
-        totalBytesReceived += BigInt(data.length)
-
-        downloadStream.write(data)
-        onProgress?.({
-          totalBytesReceived: totalBytesReceived,
-          totalExpectedBytes: transferRequest.size,
-          progress:
-            Number((totalBytesReceived * 100n) / transferRequest.size) / 100,
-        })
-        onData?.(data)
-
-        const isComplete = totalBytesReceived >= transferRequest.size
-        if (isComplete) {
-          conn.end()
-          downloadStream.end()
-          onComplete?.(totalBytesReceived)
-        }
-      }
-    })
-
-    conn.on('error', (error) => downloadStream.emit('error', error))
-    conn.on('close', () => downloadStream.end())
-
-    return downloadStream
+    return download
   }
 
   async getPeerByUsername(
@@ -409,10 +486,13 @@ export class SlskClient {
         this.listen.on('message', listener)
       })
 
-      const peer = new SlskPeer({
-        host: address.host,
-        port: address.port,
-      })
+      const peer = new SlskPeer(
+        {
+          host: address.host,
+          port: address.port,
+        },
+        username
+      )
 
       await new Promise<void>((resolve, reject) => {
         peer.once('connect', () => resolve())
@@ -427,10 +507,13 @@ export class SlskClient {
     const getByPeerInit = async () => {
       const peerAddress = await this.getPeerAddress(username)
 
-      const peer = new SlskPeer({
-        host: peerAddress.host,
-        port: peerAddress.port,
-      })
+      const peer = new SlskPeer(
+        {
+          host: peerAddress.host,
+          port: peerAddress.port,
+        },
+        username
+      )
 
       peer.once('close', () => peer.destroy())
 
@@ -469,6 +552,9 @@ export class SlskClient {
     this.listen.destroy()
     for (const peer of this.peers.values()) {
       peer.destroy()
+    }
+    for (const fileTransferConnection of this.fileTransferConnections) {
+      fileTransferConnection.destroy()
     }
   }
 }

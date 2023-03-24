@@ -53,6 +53,12 @@ export type TransferResponse =
       reason: string
     }
 
+export type PlaceInQueueResponse = {
+  kind: 'placeInQueueResponse'
+  filename: string
+  place: number
+}
+
 export type UploadFailed = { kind: 'uploadFailed'; filename: string }
 
 export const fromPeerMessage = {
@@ -127,6 +133,11 @@ export const fromPeerMessage = {
       return { kind: 'transferResponse', token, allowed: true }
     }
   },
+  placeInQueueResponse: (msg: MessageParser): PlaceInQueueResponse => {
+    const filename = msg.str()
+    const place = msg.int32()
+    return { kind: 'placeInQueueResponse', filename, place }
+  },
   uploadFailed: (msg: MessageParser): UploadFailed => {
     const filename = msg.str()
     return { kind: 'uploadFailed', filename }
@@ -147,6 +158,8 @@ export const fromPeerMessageParser = (msg: MessageParser) => {
       return fromPeerMessage.transferRequest(msg)
     case 41:
       return fromPeerMessage.transferResponse(msg)
+    case 44:
+      return fromPeerMessage.placeInQueueResponse(msg)
     case 46:
       return fromPeerMessage.uploadFailed(msg)
   }

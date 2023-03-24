@@ -19,9 +19,11 @@ export type SlskPeerEvents = {
 export class SlskPeer extends (EventEmitter as new () => TypedEventEmitter<SlskPeerEvents>) {
   conn: Socket
   msgs: MessageStream
+  username: string
 
-  constructor(address: Address) {
+  constructor(address: Address, username: string) {
     super()
+    this.username = username
     this.conn = net.createConnection(address)
 
     this.msgs = new MessageStream()

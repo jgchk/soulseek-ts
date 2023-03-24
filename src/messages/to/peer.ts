@@ -69,6 +69,10 @@ export type QueueUpload = {
   filename: string
 }
 
+export type PlaceInQueueRequest = {
+  filename: string
+}
+
 export const toPeerMessage = {
   pierceFirewall: (msg: PierceFirewall) =>
     new MessageBuilder().int8(0).rawHexStr(msg.token),
@@ -160,4 +164,6 @@ export const toPeerMessage = {
   },
   queueUpload: (msg: QueueUpload) =>
     new MessageBuilder().int32(43).str(msg.filename),
+  placeInQueueRequest: (msg: PlaceInQueueRequest) =>
+    new MessageBuilder().int32(51).str(msg.filename),
 }
