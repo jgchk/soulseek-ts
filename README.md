@@ -1,6 +1,6 @@
 # soulseek-ts
 
-[![JavaScript Style Guide](https://img.shields.io/npm/v/soulseek-ts)](https://www.npmjs.com/package/soulseek-ts)
+[![NPM](https://img.shields.io/npm/v/soulseek-ts)](https://www.npmjs.com/package/soulseek-ts)
 
 A Soulseek client written in Typescript. Fully-typed and promise-based :^)
 
