@@ -2,7 +2,7 @@
 
 [![NPM](https://img.shields.io/npm/v/soulseek-ts)](https://www.npmjs.com/package/soulseek-ts)
 
-A Soulseek client written in Typescript. Fully-typed and promise-based :^)
+A Soulseek client for Node written in Typescript. Fully-typed and promise-based :^)
 
 ## Features
 
