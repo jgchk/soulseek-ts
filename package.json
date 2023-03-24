@@ -1,7 +1,7 @@
 {
   "name": "soulseek-ts",
   "version": "2.0.1",
-  "description": "A Soulseek client for Node written in Typescript",
+  "description": "A Soulseek client for Node",
   "repository": "jgchk/soulseek-ts",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
