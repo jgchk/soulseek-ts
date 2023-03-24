@@ -13,7 +13,7 @@ export type FileSearchResponse = {
   kind: 'fileSearchResponse'
   username: string
   token: string
-  results: {
+  files: {
     filename: string
     size: bigint
     attrs: Map<FileAttribute, number>
@@ -72,14 +72,14 @@ export const fromPeerMessage = {
     const token = msg.rawHexStr(4)
 
     const numResults = msg.int32()
-    const results: FileSearchResponse['results'] = []
+    const results: FileSearchResponse['files'] = []
     for (let i = 0; i < numResults; i++) {
       msg.int8() // code
       const filename = msg.str()
       const size = msg.int64()
       msg.str() // ext
       const numAttrs = msg.int32()
-      const attrs: FileSearchResponse['results'][number]['attrs'] = new Map()
+      const attrs: FileSearchResponse['files'][number]['attrs'] = new Map()
       for (let attrib = 0; attrib < numAttrs; attrib++) {
         const attrType = msg.int32() as FileAttribute
         const attrValue = msg.int32()
@@ -100,7 +100,7 @@ export const fromPeerMessage = {
       kind: 'fileSearchResponse',
       username,
       token,
-      results,
+      files: results,
       slotsFree: slotsFree > 0,
       avgSpeed,
       queueLength,

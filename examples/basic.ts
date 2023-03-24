@@ -19,7 +19,7 @@ const main = async () => {
   const bestPeer = results
     .map((result) => ({
       ...result,
-      results: result.results.filter((file) => file.size > 10000 && file.filename.endsWith('.mp3')),
+      results: result.files.filter((file) => file.size > 10000 && file.filename.endsWith('.mp3')),
     }))
     .filter((result) => result.slotsFree && result.results.length > 0)
     .sort((a, b) => {

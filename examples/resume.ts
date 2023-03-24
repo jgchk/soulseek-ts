@@ -11,7 +11,7 @@ const PASSWORD = 'fjewQFEWfewij34'
 const startDownloading = async (): Promise<{
   filePath: string
   bestPeer: FileSearchResponse
-  smallestFile: FileSearchResponse['results'][number]
+  smallestFile: FileSearchResponse['files'][number]
 }> => {
   // create a new client and login
   const client = new SlskClient()
@@ -24,7 +24,7 @@ const startDownloading = async (): Promise<{
   const bestPeer = results
     .map((result) => ({
       ...result,
-      results: result.results.filter((file) => file.size > 10000 && file.filename.endsWith('.mp3')),
+      results: result.files.filter((file) => file.size > 10000 && file.filename.endsWith('.mp3')),
     }))
     .filter((result) => result.slotsFree && result.results.length > 0)
     .sort((a, b) => {
@@ -102,7 +102,7 @@ const finishDownloading = async ({
 }: {
   filePath: string
   bestPeer: FileSearchResponse
-  smallestFile: FileSearchResponse['results'][number]
+  smallestFile: FileSearchResponse['files'][number]
 }): Promise<void> => {
   // read the total number of bytes we've already downloaded
   const downloadedBytes = (await fs.promises.stat(filePath)).size
