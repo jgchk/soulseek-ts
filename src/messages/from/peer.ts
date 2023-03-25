@@ -1,6 +1,7 @@
 import zlib from 'zlib'
 
-import { FileAttribute, TransferDirection } from '../common'
+import type { FileAttribute} from '../common';
+import { TransferDirection } from '../common'
 import { MessageParser } from '../message-parser'
 
 export type FromPeerMessage = ReturnType<(typeof fromPeerMessage)[keyof typeof fromPeerMessage]>

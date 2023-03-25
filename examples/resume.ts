@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 
 import { SlskClient } from '../src/client'
-import { FileSearchResponse } from '../src/messages/from/peer'
+import type { FileSearchResponse } from '../src/messages/from/peer'
 
 const DOWNLOADS_DIR = path.join(__dirname, '../downloads')
 const USERNAME = 'groober_____'

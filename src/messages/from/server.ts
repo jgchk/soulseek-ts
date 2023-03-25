@@ -1,5 +1,5 @@
-import { ConnectionType } from '../common'
-import { MessageParser } from '../message-parser'
+import type { ConnectionType } from '../common'
+import type { MessageParser } from '../message-parser'
 
 export type FromServerMessage = ReturnType<
   (typeof fromServerMessage)[keyof typeof fromServerMessage]

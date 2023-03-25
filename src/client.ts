@@ -2,25 +2,27 @@ import crypto from 'crypto'
 import EventEmitter from 'events'
 import net from 'net'
 import stream from 'stream'
-import TypedEventEmitter from 'typed-emitter'
+import type TypedEventEmitter from 'typed-emitter'
 
-import { Address } from './common'
-import {
+import type { Address } from './common'
+import type {
   CompleteDownload,
   ConnectedDownload,
   Download,
-  downloadHasToken,
   DownloadingDownload,
   DownloadWithToken,
-  makeDownloadStatusData,
   RequestedDownload,
-  SlskDownloadEventEmitter,
+  SlskDownloadEventEmitter} from './downloads';
+import {
+  downloadHasToken,
+  makeDownloadStatusData
 } from './downloads'
-import { SlskListen, SlskListenEvents } from './listen'
+import type { SlskListenEvents } from './listen';
+import { SlskListen } from './listen'
 import { ConnectionType, TransferDirection, UserStatus } from './messages/common'
-import { FileSearchResponse, FromPeerMessage } from './messages/from/peer'
-import { PierceFirewall } from './messages/from/peer-init'
-import { FromServerMessage, GetPeerAddress, Login } from './messages/from/server'
+import type { FileSearchResponse, FromPeerMessage } from './messages/from/peer'
+import type { PierceFirewall } from './messages/from/peer-init'
+import type { FromServerMessage, GetPeerAddress, Login } from './messages/from/server'
 import { toPeerMessage } from './messages/to/peer'
 import { SlskPeer } from './peer'
 import { SlskServer } from './server'

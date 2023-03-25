@@ -1,7 +1,8 @@
-import stream from 'stream'
-import TypedEventEmitter from 'typed-emitter'
+import type stream from 'stream'
+import type TypedEventEmitter from 'typed-emitter'
 
-import { DistributiveOmit, distributiveOmit } from './utils/types'
+import type { DistributiveOmit} from './utils/types';
+import { distributiveOmit } from './utils/types'
 
 export type Download =
   | RequestedDownload

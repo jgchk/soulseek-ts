@@ -1,10 +1,12 @@
 import { EventEmitter } from 'events'
-import net, { Socket } from 'net'
+import type { Socket } from 'net';
+import net from 'net'
 import type TypedEventEmitter from 'typed-emitter'
 
-import { Address } from './common'
-import { FromPeerMessage, fromPeerMessageParser } from './messages/from/peer'
-import { MessageParser } from './messages/message-parser'
+import type { Address } from './common'
+import type { FromPeerMessage} from './messages/from/peer';
+import { fromPeerMessageParser } from './messages/from/peer'
+import type { MessageParser } from './messages/message-parser'
 import { MessageStream } from './messages/message-stream'
 import { toPeerMessage } from './messages/to/peer'
 

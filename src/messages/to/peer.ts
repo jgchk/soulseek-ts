@@ -1,4 +1,5 @@
-import { ConnectionType, FileAttribute, TransferDirection } from '../common'
+import type { ConnectionType, FileAttribute} from '../common';
+import { TransferDirection } from '../common'
 import { MessageBuilder } from '../message-builder'
 
 export type ToPeerMessage = Parameters<(typeof toPeerMessage)[keyof typeof toPeerMessage]>[0]
