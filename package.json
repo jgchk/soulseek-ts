@@ -2,7 +2,10 @@
   "name": "soulseek-ts",
   "version": "2.0.5",
   "description": "A Soulseek client for Node",
-  "repository": "github:jgchk/soulseek-ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jgchk/soulseek-ts.git"
+  },
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
