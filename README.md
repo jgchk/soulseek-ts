@@ -16,7 +16,7 @@ A Soulseek client for Node. Fully-typed and promise-based :^)
 
 ## Getting Started
 
-Check out other [examples](https://github.com/jgchk/soulseek-ts/tree/main/examples)
+Check out some [examples](https://github.com/jgchk/soulseek-ts/tree/main/examples), or get up and running with this minimal starter:
 
 ```ts
 // create a new client and login
