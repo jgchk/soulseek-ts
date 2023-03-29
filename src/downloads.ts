@@ -1,7 +1,7 @@
 import type stream from 'stream'
 import type TypedEventEmitter from 'typed-emitter'
 
-import type { DistributiveOmit} from './utils/types';
+import type { DistributiveOmit } from './utils/types'
 import { distributiveOmit } from './utils/types'
 
 export type Download =

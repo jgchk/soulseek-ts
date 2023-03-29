@@ -12,12 +12,10 @@ import type {
   DownloadingDownload,
   DownloadWithToken,
   RequestedDownload,
-  SlskDownloadEventEmitter} from './downloads';
-import {
-  downloadHasToken,
-  makeDownloadStatusData
+  SlskDownloadEventEmitter,
 } from './downloads'
-import type { SlskListenEvents } from './listen';
+import { downloadHasToken, makeDownloadStatusData } from './downloads'
+import type { SlskListenEvents } from './listen'
 import { SlskListen } from './listen'
 import { ConnectionType, TransferDirection, UserStatus } from './messages/common'
 import type { FileSearchResponse, FromPeerMessage } from './messages/from/peer'

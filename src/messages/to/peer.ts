@@ -1,4 +1,4 @@
-import type { ConnectionType, FileAttribute} from '../common';
+import type { ConnectionType, FileAttribute } from '../common'
 import { TransferDirection } from '../common'
 import { MessageBuilder } from '../message-builder'
 

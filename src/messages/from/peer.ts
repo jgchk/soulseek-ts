@@ -1,6 +1,6 @@
 import zlib from 'zlib'
 
-import type { FileAttribute} from '../common';
+import type { FileAttribute } from '../common'
 import { TransferDirection } from '../common'
 import { MessageParser } from '../message-parser'
 
