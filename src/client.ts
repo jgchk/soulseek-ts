@@ -30,10 +30,16 @@ const DEFAULT_SEARCH_TIMEOUT = 10 * 1000
 const DEFAULT_GET_PEER_ADDRESS_TIMEOUT = 10 * 1000
 const DEFAULT_GET_PEER_BY_USERNAME_TIMEOUT = 10 * 1000
 
+export type SlskClientEvents = {
+  'server-error': (error: Error) => void
+  'listen-error': (error: Error) => void
+  'peer-error': (error: Error, peer: SlskPeer) => void
+}
+
 export type SlskPeersEvents = {
   message: (msg: FromPeerMessage, peer: SlskPeer) => void
 }
-export class SlskClient {
+export class SlskClient extends (EventEmitter as new () => TypedEventEmitter<SlskClientEvents>) {
   server: SlskServer
   listen: SlskListen
   peers: Map<string, SlskPeer>
@@ -49,12 +55,15 @@ export class SlskClient {
     },
     listenPort = 2234,
   }: { serverAddress?: Address; listenPort?: number } = {}) {
+    super()
     this.server = new SlskServer(serverAddress)
     this.listen = new SlskListen(listenPort)
     this.peers = new Map()
     this.peerMessages = new EventEmitter() as TypedEventEmitter<SlskPeersEvents>
     this.downloads = []
     this.fileTransferConnections = []
+
+    this.server.on('error', (error) => this.emit('server-error', error))
 
     this.server.on('message', (msg) => {
       switch (msg.kind) {
@@ -104,6 +113,7 @@ export class SlskClient {
               })
 
               peer.on('message', (msg) => this.peerMessages.emit('message', msg, peer))
+              peer.on('error', (error) => this.emit('peer-error', error, peer))
 
               this.peers.set(msg.username, peer)
 
@@ -184,6 +194,8 @@ export class SlskClient {
       }
     })
 
+    this.listen.on('error', (error) => this.emit('listen-error', error))
+
     this.listen.on('message', (msg) => {
       const handler = async () => {
         switch (msg.kind) {
@@ -210,6 +222,7 @@ export class SlskClient {
             })
 
             peer.on('message', (msg) => this.peerMessages.emit('message', msg, peer))
+            peer.on('error', (error) => this.emit('peer-error', error, peer))
 
             this.peers.set(msg.username, peer)
 
@@ -488,6 +501,7 @@ export class SlskClient {
 
     peer.once('close', () => this.peers.delete(username))
     peer.on('message', (msg) => this.peerMessages.emit('message', msg, peer))
+    peer.on('error', (error) => this.emit('peer-error', error, peer))
 
     this.peers.set(username, peer)
 
