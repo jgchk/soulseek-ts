@@ -26,7 +26,7 @@ export class SlskServer extends (EventEmitter as new () => TypedEventEmitter<Sls
     this.msgs = new MessageStream()
 
     this.conn.on('error', (error) => {
-      this.emit('error', error)
+      console.error('Server connection error', error)
     })
 
     this.conn.on('data', (data) => {

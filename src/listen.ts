@@ -29,7 +29,9 @@ export class SlskListen extends (EventEmitter as new () => TypedEventEmitter<Sls
       const msgs = new MessageStream()
 
       c.on('data', (chunk) => msgs.write(chunk))
-      c.on('error', (error) => this.emit('error', error))
+      c.on('error', (error) => {
+        console.error('Error on connection', error)
+      })
 
       msgs.on('message', (msg: MessageParser) => {
         try {
@@ -43,7 +45,9 @@ export class SlskListen extends (EventEmitter as new () => TypedEventEmitter<Sls
       })
     })
 
-    this.server.on('error', (error) => this.emit('error', error))
+    this.server.on('error', (error) => {
+      console.error('Local server error', error)
+    })
 
     this.server.listen(port, '0.0.0.0')
   }
