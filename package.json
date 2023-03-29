@@ -18,7 +18,7 @@
     "node": ">=16.6.0"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "build": "rm -r dist || true && tsup src/index.ts --format cjs,esm --dts",
     "lint": "prettier --check . && tsc --noEmit && eslint .",
     "format": "prettier --write .",
     "test": "pnpm run test:basic",
