@@ -31,9 +31,7 @@ export class SlskPeer extends (EventEmitter as new () => TypedEventEmitter<SlskP
     this.msgs = new MessageStream()
 
     this.conn.on('connect', () => this.emit('connect'))
-    this.conn.on('error', (error) => {
-      console.error('Peer connection error', error)
-    })
+    this.conn.on('error', (error) => this.emit('error', error))
     this.conn.on('close', (hadError) => this.emit('close', hadError))
     this.conn.on('end', () => this.emit('end'))
 
