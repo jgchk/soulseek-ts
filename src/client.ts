@@ -34,6 +34,7 @@ export type SlskClientEvents = {
   'server-error': (error: Error) => void
   'listen-error': (error: Error) => void
   'peer-error': (error: Error, peer: SlskPeer) => void
+  'client-error': (error: unknown) => void
 }
 
 export type SlskPeersEvents = {
@@ -66,131 +67,139 @@ export class SlskClient extends (EventEmitter as new () => TypedEventEmitter<Sls
     this.server.on('error', (error) => this.emit('server-error', error))
 
     this.server.on('message', (msg) => {
-      switch (msg.kind) {
-        case 'login': {
-          this.server.send('sharedFoldersFiles', { dirs: 1, files: 1 })
-          this.server.send('haveNoParents', { haveNoParents: true })
-          this.server.send('setStatus', { status: UserStatus.Online })
-          break
-        }
-        case 'possibleParents': {
-          for (const parent of msg.parents) {
-            this.server.send('searchParent', { host: parent.host })
+      const handler = () => {
+        switch (msg.kind) {
+          case 'login': {
+            this.server.send('sharedFoldersFiles', { dirs: 1, files: 1 })
+            this.server.send('haveNoParents', { haveNoParents: true })
+            this.server.send('setStatus', { status: UserStatus.Online })
+            break
           }
-          break
-        }
-        case 'connectToPeer': {
-          switch (msg.type) {
-            case ConnectionType.PeerToPeer: {
-              const existingPeer = this.peers.get(msg.username)
-              if (existingPeer) {
-                // We're already connected, ignore
-                return
-              }
+          case 'possibleParents': {
+            for (const parent of msg.parents) {
+              this.server.send('searchParent', { host: parent.host })
+            }
+            break
+          }
+          case 'connectToPeer': {
+            switch (msg.type) {
+              case ConnectionType.PeerToPeer: {
+                const existingPeer = this.peers.get(msg.username)
+                if (existingPeer) {
+                  // We're already connected, ignore
+                  return
+                }
 
-              const peer = new SlskPeer(
-                {
+                const peer = new SlskPeer(
+                  {
+                    host: msg.host,
+                    port: msg.port,
+                  },
+                  msg.username
+                )
+
+                peer.once('connect', () => {
+                  peer.send('pierceFirewall', { token: msg.token })
+                })
+
+                peer.once('error', () => {
+                  this.server.send('cantConnectToPeer', {
+                    token: msg.token,
+                    username: msg.username,
+                  })
+                })
+
+                peer.once('close', () => {
+                  peer.destroy()
+                  this.peers.delete(msg.username)
+                })
+
+                peer.on('message', (msg) => this.peerMessages.emit('message', msg, peer))
+                peer.on('error', (error) => this.emit('peer-error', error, peer))
+
+                this.peers.set(msg.username, peer)
+
+                break
+              }
+              case ConnectionType.FileTransfer: {
+                const conn = net.createConnection({
                   host: msg.host,
                   port: msg.port,
-                },
-                msg.username
-              )
-
-              peer.once('connect', () => {
-                peer.send('pierceFirewall', { token: msg.token })
-              })
-
-              peer.once('error', () => {
-                this.server.send('cantConnectToPeer', {
-                  token: msg.token,
-                  username: msg.username,
                 })
-              })
 
-              peer.once('close', () => {
-                peer.destroy()
-                this.peers.delete(msg.username)
-              })
+                this.fileTransferConnections.push(conn)
 
-              peer.on('message', (msg) => this.peerMessages.emit('message', msg, peer))
-              peer.on('error', (error) => this.emit('peer-error', error, peer))
+                conn.write(toPeerMessage.pierceFirewall({ token: msg.token }).getBuffer())
 
-              this.peers.set(msg.username, peer)
+                let download: DownloadWithToken | undefined
+                conn.on('data', (data) => {
+                  if (download === undefined) {
+                    const token = data.toString('hex', 0, 4)
+                    const download_ = this.downloads.find(
+                      (d): d is ConnectedDownload | DownloadingDownload | CompleteDownload =>
+                        d.username === msg.username && downloadHasToken(d) && d.token === token
+                    )
+                    if (!download_) {
+                      console.error('No download found for', msg)
+                      conn.end()
+                      return
+                    }
+                    download = download_
+                    download.status = 'downloading'
+                    download.events.emit('status', 'downloading', makeDownloadStatusData(download))
 
-              break
-            }
-            case ConnectionType.FileTransfer: {
-              const conn = net.createConnection({
-                host: msg.host,
-                port: msg.port,
-              })
+                    // send file offset message
+                    const fileOffsetBuffer = Buffer.alloc(8)
+                    fileOffsetBuffer.writeBigUInt64LE(download.receivedBytes, 0)
+                    conn.write(fileOffsetBuffer)
+                  } else {
+                    download.receivedBytes += BigInt(data.length)
 
-              this.fileTransferConnections.push(conn)
+                    download.stream.write(data)
+                    download.events.emit('data', data)
+                    download.events.emit('progress', {
+                      receivedBytes: download.receivedBytes,
+                      totalBytes: download.totalBytes,
+                      progress: Number((download.receivedBytes * 100n) / download.totalBytes) / 100,
+                    })
 
-              conn.write(toPeerMessage.pierceFirewall({ token: msg.token }).getBuffer())
+                    const isComplete = download.receivedBytes >= download.totalBytes
+                    if (isComplete) {
+                      conn.end()
+                      download.stream.end()
+                      download.status = 'complete'
+                      download.events.emit('complete', download.receivedBytes)
+                      download.events.emit('status', 'complete', makeDownloadStatusData(download))
 
-              let download: DownloadWithToken | undefined
-              conn.on('data', (data) => {
-                if (download === undefined) {
-                  const token = data.toString('hex', 0, 4)
-                  const download_ = this.downloads.find(
-                    (d): d is ConnectedDownload | DownloadingDownload | CompleteDownload =>
-                      d.username === msg.username && downloadHasToken(d) && d.token === token
+                      // remove from this.downloads
+                      this.downloads = this.downloads.filter((d) => d !== download)
+                    }
+                  }
+                })
+
+                conn.on('error', (error) => download?.stream.emit('error', error))
+                conn.on('close', () => {
+                  download?.stream.end()
+                  this.fileTransferConnections = this.fileTransferConnections.filter(
+                    (c) => c !== conn
                   )
-                  if (!download_) {
-                    console.error('No download found for', msg)
-                    conn.end()
-                    return
-                  }
-                  download = download_
-                  download.status = 'downloading'
-                  download.events.emit('status', 'downloading', makeDownloadStatusData(download))
+                })
 
-                  // send file offset message
-                  const fileOffsetBuffer = Buffer.alloc(8)
-                  fileOffsetBuffer.writeBigUInt64LE(download.receivedBytes, 0)
-                  conn.write(fileOffsetBuffer)
-                } else {
-                  download.receivedBytes += BigInt(data.length)
-
-                  download.stream.write(data)
-                  download.events.emit('data', data)
-                  download.events.emit('progress', {
-                    receivedBytes: download.receivedBytes,
-                    totalBytes: download.totalBytes,
-                    progress: Number((download.receivedBytes * 100n) / download.totalBytes) / 100,
-                  })
-
-                  const isComplete = download.receivedBytes >= download.totalBytes
-                  if (isComplete) {
-                    conn.end()
-                    download.stream.end()
-                    download.status = 'complete'
-                    download.events.emit('complete', download.receivedBytes)
-                    download.events.emit('status', 'complete', makeDownloadStatusData(download))
-
-                    // remove from this.downloads
-                    this.downloads = this.downloads.filter((d) => d !== download)
-                  }
-                }
-              })
-
-              conn.on('error', (error) => download?.stream.emit('error', error))
-              conn.on('close', () => {
-                download?.stream.end()
-                this.fileTransferConnections = this.fileTransferConnections.filter(
-                  (c) => c !== conn
-                )
-              })
-
-              break
-            }
-            case ConnectionType.Distributed: {
-              // TODO: Handle distributed peer
-              break
+                break
+              }
+              case ConnectionType.Distributed: {
+                // TODO: Handle distributed peer
+                break
+              }
             }
           }
         }
+      }
+
+      try {
+        handler()
+      } catch (error) {
+        this.emit('client-error', error)
       }
     })
 
@@ -231,13 +240,49 @@ export class SlskClient extends (EventEmitter as new () => TypedEventEmitter<Sls
         }
       }
 
-      void handler()
+      try {
+        void handler()
+      } catch (error) {
+        this.emit('client-error', error)
+      }
     })
 
     this.peerMessages.on('message', (msg, peer) => {
-      switch (msg.kind) {
-        case 'transferRequest': {
-          if (msg.direction === TransferDirection.Upload) {
+      const handler = () => {
+        switch (msg.kind) {
+          case 'transferRequest': {
+            if (msg.direction === TransferDirection.Upload) {
+              const existingDownloadIndex = this.downloads.findIndex(
+                (d) => d.username === peer.username && d.filename === msg.filename
+              )
+
+              if (existingDownloadIndex === -1) {
+                console.error('No download found for', msg)
+                return
+              }
+
+              this.downloads[existingDownloadIndex] = {
+                ...this.downloads[existingDownloadIndex],
+                status: 'connected',
+                queuePosition: 0,
+                token: msg.token,
+                totalBytes: msg.size,
+              }
+              this.downloads[existingDownloadIndex].events.emit(
+                'status',
+                'connected',
+                makeDownloadStatusData(this.downloads[existingDownloadIndex])
+              )
+
+              peer.send('transferResponse', {
+                token: msg.token,
+                allowed: true,
+              })
+            }
+
+            break
+          }
+          case 'placeInQueueResponse': {
             const existingDownloadIndex = this.downloads.findIndex(
               (d) => d.username === peer.username && d.filename === msg.filename
             )
@@ -247,58 +292,34 @@ export class SlskClient extends (EventEmitter as new () => TypedEventEmitter<Sls
               return
             }
 
-            this.downloads[existingDownloadIndex] = {
-              ...this.downloads[existingDownloadIndex],
-              status: 'connected',
-              queuePosition: 0,
-              token: msg.token,
-              totalBytes: msg.size,
+            const download = this.downloads[existingDownloadIndex]
+            if (download.status === 'requested') {
+              this.downloads[existingDownloadIndex] = {
+                ...download,
+                status: 'queued',
+                queuePosition: msg.place,
+              }
+              this.downloads[existingDownloadIndex].events.emit(
+                'status',
+                'queued',
+                makeDownloadStatusData(this.downloads[existingDownloadIndex])
+              )
+            } else if (download.status === 'queued') {
+              this.downloads[existingDownloadIndex] = {
+                ...download,
+                queuePosition: msg.place,
+              }
             }
-            this.downloads[existingDownloadIndex].events.emit(
-              'status',
-              'connected',
-              makeDownloadStatusData(this.downloads[existingDownloadIndex])
-            )
 
-            peer.send('transferResponse', {
-              token: msg.token,
-              allowed: true,
-            })
+            break
           }
-
-          break
         }
-        case 'placeInQueueResponse': {
-          const existingDownloadIndex = this.downloads.findIndex(
-            (d) => d.username === peer.username && d.filename === msg.filename
-          )
+      }
 
-          if (existingDownloadIndex === -1) {
-            console.error('No download found for', msg)
-            return
-          }
-
-          const download = this.downloads[existingDownloadIndex]
-          if (download.status === 'requested') {
-            this.downloads[existingDownloadIndex] = {
-              ...download,
-              status: 'queued',
-              queuePosition: msg.place,
-            }
-            this.downloads[existingDownloadIndex].events.emit(
-              'status',
-              'queued',
-              makeDownloadStatusData(this.downloads[existingDownloadIndex])
-            )
-          } else if (download.status === 'queued') {
-            this.downloads[existingDownloadIndex] = {
-              ...download,
-              queuePosition: msg.place,
-            }
-          }
-
-          break
-        }
+      try {
+        handler()
+      } catch (error) {
+        this.emit('client-error', error)
       }
     })
   }

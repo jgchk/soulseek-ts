@@ -1,6 +1,6 @@
 {
   "name": "soulseek-ts",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "A Soulseek client for Node",
   "repository": {
     "type": "git",
