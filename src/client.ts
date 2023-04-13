@@ -47,6 +47,7 @@ export class SlskClient extends (EventEmitter as new () => TypedEventEmitter<Sls
   peerMessages: TypedEventEmitter<SlskPeersEvents>
   fileTransferConnections: net.Socket[]
   username: string | undefined
+  loggedIn = false
   downloads: Download[]
 
   constructor({
@@ -372,6 +373,7 @@ export class SlskClient extends (EventEmitter as new () => TypedEventEmitter<Sls
     }
 
     this.username = username
+    this.loggedIn = true
   }
 
   search(
