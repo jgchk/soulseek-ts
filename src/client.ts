@@ -479,7 +479,7 @@ export class SlskClient extends (EventEmitter as new () => TypedEventEmitter<Sls
 
       await new Promise<void>((resolve, reject) => {
         peer.once('connect', () => resolve())
-        peer.once('error', () => reject())
+        peer.once('error', (error) => reject(error))
       })
 
       peer.once('close', () => peer.destroy())
@@ -501,6 +501,7 @@ export class SlskClient extends (EventEmitter as new () => TypedEventEmitter<Sls
       peer.once('close', () => peer.destroy())
 
       await new Promise<void>((resolve, reject) => {
+        peer.once('error', (error) => reject(error))
         peer.once('connect', () => {
           if (this.username === undefined) {
             reject(new Error('You are not logged in'))
