@@ -521,7 +521,12 @@ export class SlskClient extends (EventEmitter as new () => TypedEventEmitter<Sls
       return peer
     }
 
-    const peer = await Promise.any([getByConnectToPeer(), getByPeerInit()])
+    let peer: SlskPeer
+    try {
+      peer = await Promise.any([getByConnectToPeer(), getByPeerInit()])
+    } catch (error) {
+      throw new Error(`Could not connect to ${username}`)
+    }
 
     peer.once('close', () => this.peers.delete(username))
     peer.on('message', (msg) => this.peerMessages.emit('message', msg, peer))
